@@ -81,7 +81,10 @@ wss.on('connection', ws => {
     if (history.length > MAX_HISTORY) history.shift();
     sendAll(m);
   });
-  ws.on('close', () => broadcast());
+    ws.on('close', () => {
+    if (wss.clients.size === 0) history.length = 0;   // 0 na ang nanonood: burahin lahat ng chat
+    broadcast();
+  });
   ws.on('error', () => {});
 
   ws.send(JSON.stringify({ type: 'history', msgs: history }));
