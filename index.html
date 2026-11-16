@@ -142,7 +142,8 @@
       display: flex; justify-content: space-between; align-items: flex-start;
       z-index: 5; pointer-events: none;
     }
-    .badge-live { background: var(--red); color: #fff; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.4px; }
+    .badge-live { display: inline-flex; align-items: center; gap: 6px; background: none; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 3px 2px; letter-spacing: 0.6px; text-shadow: 0 1px 4px rgba(0,0,0,.85); }
+    .badge-live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 6px var(--red); animation: pulse 1.4s infinite; }
     .badge-q { background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); color: #c0c6d4; font-size: 0.68rem; padding: 3px 8px; border-radius: 4px; }
 
     .overlay-bottom {
@@ -271,6 +272,41 @@
       .nav-btn { padding: 10px 12px; }
       .nav-btn:not(.active) span { display: none; }
     }
+
+    /* ---------- Live chat ---------- */
+    .chat-wrap { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 60; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
+    .chat-wrap > * { pointer-events: auto; }
+    .chat-toggle { position: relative; width: 50px; height: 50px; border-radius: 50%; border: 1px solid var(--border); background: rgba(18,21,28,.92); color: var(--text); cursor: pointer; display: grid; place-items: center; backdrop-filter: blur(6px); box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+    .chat-wrap.open .chat-toggle { display: none; }
+    .stage { transition: padding-right .2s ease; }
+    .stage.chat-reserve { padding-right: 300px; }
+    @media (max-width: 699px) { .stage.chat-reserve { padding-right: 0; } }
+    .chat-toggle:hover { border-color: var(--teal); }
+    .chat-toggle svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .chat-dot { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; background: var(--red); border-radius: 50%; display: none; }
+    .chat-panel { width: min(290px, calc(100vw - 20px)); height: min(480px, 62vh); display: none; flex-direction: column; background: rgba(18,21,28,.96); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; backdrop-filter: blur(8px); }
+    .chat-wrap.open .chat-panel { display: flex; }
+    .chat-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: .8rem; font-weight: 700; }
+    .chat-head button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 1rem; }
+    .chat-msgs { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: .82rem; line-height: 1.35; }
+    .chat-msg b { color: var(--teal); font-weight: 600; margin-right: 6px; }
+    .chat-msg.me b { color: #00b4d8; }
+    .chat-msg span { word-break: break-word; }
+    .chat-empty { color: var(--muted); text-align: center; margin: auto; font-size: .78rem; }
+    .chat-me { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: .78rem; color: var(--muted); }
+    .chat-me .nm { color: var(--teal); font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-me input { flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--teal); border-radius: 6px; color: var(--text); padding: 4px 8px; font: inherit; font-size: .78rem; outline: none; display: none; }
+    .chat-me.editing input { display: block; }
+    .chat-me.editing .nm { display: none; }
+    .chat-me button { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: .72rem; cursor: pointer; white-space: nowrap; }
+    .chat-me button:hover { border-color: var(--teal); }
+    .chat-foot { border-top: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .chat-foot input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font: inherit; font-size: .82rem; outline: none; }
+    .chat-foot input:focus { border-color: var(--teal); }
+    .chat-row { display: flex; gap: 6px; }
+    .chat-row input { flex: 1; }
+    .chat-row button { background: var(--teal); color: #000; border: 0; border-radius: 8px; padding: 0 14px; font: inherit; font-weight: 700; font-size: .8rem; cursor: pointer; }
+    .chat-note { font-size: .68rem; color: var(--red); min-height: 1em; }
   </style>
 </head>
 <body>
@@ -293,6 +329,29 @@
   </header>
 
   <div class="stage" id="stage">
+    <div class="chat-wrap" id="chatWrap">
+      <div class="chat-panel">
+        <div class="chat-head"><span>💬 Live Chat</span><button type="button" id="chatClose" title="Close">✕</button></div>
+        <div class="chat-me" id="chatMeBar">
+          <span>Ikaw:</span>
+          <span class="nm" id="chatMe">Anon</span>
+          <input id="chatEdit" maxlength="20" autocomplete="off" />
+          <button type="button" id="chatRename">Change name</button>
+        </div>
+        <div class="chat-msgs" id="chatMsgs"><div class="chat-empty" id="chatEmpty">Wala pang chat. Mauna ka na!</div></div>
+        <div class="chat-foot">
+          <div class="chat-row">
+            <input id="chatText" maxlength="200" placeholder="Mag-chat..." autocomplete="off" />
+            <button type="button" id="chatSend">Send</button>
+          </div>
+          <div class="chat-note" id="chatNote"></div>
+        </div>
+      </div>
+      <button class="chat-toggle" type="button" id="chatToggle" title="Chat">
+        <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><circle cx="8.5" cy="12" r=".6" fill="currentColor"/><circle cx="12" cy="12" r=".6" fill="currentColor"/><circle cx="15.5" cy="12" r=".6" fill="currentColor"/></svg>
+        <span class="chat-dot" id="chatDot"></span>
+      </button>
+    </div>
     <div class="grid four" id="grid">
       <div class="cam" data-id="1">
         <div class="overlay-top"><span class="badge-live">LIVE</span><span class="badge-q" data-q>AUTO</span></div>
@@ -896,6 +955,7 @@
       const h = Math.floor(w * 9 / 16);
       grid.style.gridTemplateColumns = `repeat(${best.c}, ${w}px)`;
       grid.style.gridTemplateRows = `repeat(${best.r}, ${h}px)`;
+      if (typeof chatReserve === 'function') chatReserve();
     }
 
     new ResizeObserver(fitGrid).observe(grid);
@@ -957,7 +1017,7 @@
        Ilagay dito ang URL ng presence Worker (hal. 'https://pbb-presence.YOURNAME.workers.dev').
        Kapag walang URL o hindi maka-connect, mga tab lang sa browser na ito ang binibilang. */
     // Auto: gagamitin ang parehong server (Render) na nag-serve ng page na ito.
-    const PRESENCE_URL = (location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : '';
+    const PRESENCE_URL = 'https://pbb-site-1.onrender.com';
 
     const viewerEl = $('viewerCount');
     const myId = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -986,6 +1046,110 @@
       window.addEventListener('pagehide', () => { try { bc.postMessage({ id: myId, bye: true }); } catch (e) {} });
     } catch (e) {}
 
+    /* ---------------- Live chat ---------------- */
+    const chatWrap = $('chatWrap'), chatMsgs = $('chatMsgs'), chatText = $('chatText'),
+          chatNote = $('chatNote'), chatDot = $('chatDot');
+    function randomAnon() { return 'Anon_' + (1000 + Math.floor(Math.random() * 9000)); }
+    let myName = '';
+    try { myName = localStorage.getItem('pbbChatName2') || ''; } catch (e) {}
+    if (!myName) { myName = randomAnon(); try { localStorage.setItem('pbbChatName2', myName); } catch (e) {} }
+    const chatMe = $('chatMe'), chatEdit = $('chatEdit'), chatRename = $('chatRename'), chatMeBar = $('chatMeBar');
+    chatMe.textContent = myName;
+
+    function stopEdit(save) {
+      if (save) {
+        const v = chatEdit.value.replace(/\s+/g, ' ').trim().slice(0, 20);
+        myName = v || randomAnon();
+        try { localStorage.setItem('pbbChatName2', myName); } catch (e) {}
+        chatMe.textContent = myName;
+      }
+      chatMeBar.classList.remove('editing');
+      chatRename.textContent = 'Change name';
+    }
+    chatRename.addEventListener('click', () => {
+      if (chatMeBar.classList.contains('editing')) { stopEdit(true); return; }
+      chatEdit.value = myName;
+      chatMeBar.classList.add('editing');
+      chatRename.textContent = 'Save';
+      chatEdit.focus(); chatEdit.select();
+    });
+    chatEdit.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); stopEdit(true); }
+      else if (e.key === 'Escape') { e.stopPropagation(); stopEdit(false); }
+    });
+
+    /* Sa malalapad na screen, hindi gagalaw ang video; uusog lang kapag talagang tatamaan ng chat */
+    var chatReady = false;
+    function chatReserve() {
+      if (!chatReady) return;
+      let reserve = false;
+      if (chatWrap.classList.contains('open') && window.innerWidth >= 700) {
+        const n = [...cams].filter(c => !c.classList.contains('off')).length;
+        if (n) {
+          const cs = getComputedStyle(grid);
+          const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+          const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+          const gap = parseFloat(cs.columnGap) || 0;
+          const full = stage.clientWidth;
+          const W = full - padX, H = grid.clientHeight - padY;
+          if (W > 0 && H > 0) {
+            let bw = 0, bc = 1;
+            for (let c = 1; c <= n; c++) {
+              const r = Math.ceil(n / c);
+              const w = Math.min((W - gap * (c - 1)) / c, ((H - gap * (r - 1)) / r) * 16 / 9);
+              if (w > bw + 0.5) { bw = w; bc = c; }
+            }
+            const content = Math.floor(bw) * bc + gap * (bc - 1) + padX;
+            reserve = (full + content) / 2 > full - 300;
+          }
+        }
+      }
+      stage.classList.toggle('chat-reserve', reserve);
+    }
+
+    function chatOpen(v) {
+      chatWrap.classList.toggle('open', v);
+      chatReserve();
+      if (v) { chatDot.style.display = 'none'; chatMsgs.scrollTop = chatMsgs.scrollHeight; }
+    }
+    chatReady = true;
+    chatOpen(window.innerWidth >= 700);   // bukas agad sa laptop/tablet; sa maliit na phone nakasara muna
+    $('chatToggle').addEventListener('click', () => chatOpen(!chatWrap.classList.contains('open')));
+    $('chatClose').addEventListener('click', () => chatOpen(false));
+
+    function addChat(m, silent) {
+      if (!m || typeof m.text !== 'string') return;
+      const empty = $('chatEmpty'); if (empty) empty.remove();
+      const row = document.createElement('div');
+      row.className = 'chat-msg' + (m.id === myId ? ' me' : '');
+      const b = document.createElement('b'); b.textContent = String(m.name || 'Viewer').slice(0, 20);
+      const t = document.createElement('span'); t.textContent = m.text.slice(0, 200);
+      row.append(b, t);
+      const atBottom = chatMsgs.scrollHeight - chatMsgs.scrollTop - chatMsgs.clientHeight < 40;
+      chatMsgs.appendChild(row);
+      while (chatMsgs.children.length > 100) chatMsgs.firstChild.remove();
+      if (atBottom || m.id === myId) chatMsgs.scrollTop = chatMsgs.scrollHeight;
+      if (!silent && !chatWrap.classList.contains('open')) chatDot.style.display = 'block';
+    }
+
+    let noteTimer = null;
+    function chatSay(msg) {
+      chatNote.textContent = msg;
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(() => { chatNote.textContent = ''; }, 3000);
+    }
+
+    function sendChat() {
+      const text = chatText.value.replace(/\s+/g, ' ').trim();
+      if (!text) return;
+      if (!presenceWS || presenceWS.readyState !== 1) { chatSay('Hindi pa konektado. Subukan ulit sa ilang segundo.'); return; }
+      const name = myName;
+      presenceWS.send(JSON.stringify({ type: 'chat', id: myId, name, text }));
+      chatText.value = '';
+    }
+    $('chatSend').addEventListener('click', sendChat);
+    chatText.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
+
     let presenceWS = null, presenceRetry = 0, presencePing = null;
     function connectPresence() {
       if (!PRESENCE_URL) return;
@@ -1000,8 +1164,11 @@
       ws.onmessage = e => {
         if (e.data === 'pong') return;
         try {
-          const n = JSON.parse(e.data).count;
-          if (Number.isFinite(n)) { remoteCount = n; showViewers(); }
+          const d = JSON.parse(e.data);
+          if (d.type === 'chat') { addChat(d); return; }
+          if (d.type === 'history') { (d.msgs || []).forEach(m => addChat(m, true)); return; }
+          if (d.type === 'error') { chatSay(d.message || ''); return; }
+          if (Number.isFinite(d.count)) { remoteCount = d.count; showViewers(); }
         } catch (err) {}
       };
       ws.onclose = () => {
