@@ -87,7 +87,6 @@ wss.on('connection', ws => {
   });
   ws.on('error', () => {});
 
-  ws.send(JSON.stringify({ type: 'history', msgs: history }));
   broadcast(true);
 });
 
